@@ -3,6 +3,10 @@
 ВАЖНО: никакого обхода защит. Браузер ведёт себя как обычный пользователь,
 заходит редко. Если Avito показывает капчу/блокировку — мы НЕ пытаемся её решать,
 а поднимаем CaptchaError, чтобы монитор поставил паузу и уведомил владельца.
+
+Браузер один на весь проход мониторинга: монитор открывает AvitoBrowser как
+async-контекст и ходит по всем поискам/карточкам в одной сессии. Это быстрее
+(не запускаем Chromium на каждую страницу) и ближе к поведению живого человека.
 """
 from __future__ import annotations
 
@@ -36,47 +40,104 @@ def _parse_price(text: str) -> int | None:
     return int(digits) if digits else None
 
 
-async def fetch_search(search: SavedSearch, max_detail: int = 4) -> list[RawListing]:
-    """Открывает страницу поиска, извлекает карточки, догружает описания для новых.
+def _abs_url(href: str | None) -> str | None:
+    if not href:
+        return None
+    if href.startswith("http"):
+        return href
+    return f"https://www.avito.ru{href}"
 
-    Дедупликация по avito_id выполняется выше (в мониторе) — здесь возвращаем всё,
-    что видим на первой странице.
+
+class AvitoBrowser:
+    """Одна браузерная сессия на весь проход мониторинга.
+
+    Использование:
+        async with AvitoBrowser() as br:
+            items = await br.fetch_search(search)
+            desc = await br.fetch_detail(items[0].url)
     """
-    try:
-        from playwright.async_api import async_playwright  # noqa: WPS433
-    except ImportError as exc:  # pragma: no cover
-        raise RuntimeError(
-            "Playwright не установлен. Выполни: pip install playwright && playwright install chromium"
-        ) from exc
 
-    results: list[RawListing] = []
+    def __init__(self) -> None:
+        self._pw = None
+        self._browser = None
+        self._context = None
 
-    async with async_playwright() as pw:
-        browser = await pw.chromium.launch(headless=settings.watch_headless)
-        context = await browser.new_context(
+    async def __aenter__(self) -> "AvitoBrowser":
+        try:
+            from playwright.async_api import async_playwright  # noqa: WPS433
+        except ImportError as exc:  # pragma: no cover
+            raise RuntimeError(
+                "Playwright не установлен. Выполни: pip install playwright && playwright install chromium"
+            ) from exc
+
+        self._pw = await async_playwright().start()
+        self._browser = await self._pw.chromium.launch(headless=settings.watch_headless)
+        self._context = await self._browser.new_context(
             user_agent=_USER_AGENT,
             locale="ru-RU",
             viewport={"width": 1366, "height": 900},
         )
-        page = await context.new_page()
-        try:
-            await page.goto(search.url, wait_until="domcontentloaded", timeout=45000)
-            await page.wait_for_timeout(2500)
+        return self
 
+    async def __aexit__(self, *exc_info) -> None:
+        for closer in (self._context, self._browser):
+            try:
+                if closer:
+                    await closer.close()
+            except Exception:  # noqa: BLE001
+                pass
+        try:
+            if self._pw:
+                await self._pw.stop()
+        except Exception:  # noqa: BLE001
+            pass
+        self._pw = self._browser = self._context = None
+
+    async def _open_page(self, url: str, settle_ms: int, captcha_hint: str):
+        """Открывает URL в новой вкладке и проверяет на блокировку. Вкладку закрывает вызывающий."""
+        page = await self._context.new_page()
+        try:
+            await page.goto(url, wait_until="domcontentloaded", timeout=45000)
+            await page.wait_for_timeout(settle_ms)
             body_text = (await page.inner_text("body")).lower()
             if any(m in body_text for m in _BLOCK_MARKERS):
-                raise CaptchaError(f"Avito показал проверку на поиске '{search.name}'")
+                raise CaptchaError(captcha_hint)
+            return page
+        except BaseException:
+            await page.close()
+            raise
 
+    async def fetch_search(self, search: SavedSearch) -> list[RawListing]:
+        """Открывает страницу поиска и извлекает карточки первой страницы.
+
+        Дедупликация по avito_id выполняется выше (в мониторе).
+        """
+        page = await self._open_page(
+            search.url, settle_ms=2500,
+            captcha_hint=f"Avito показал проверку на поиске '{search.name}'",
+        )
+        try:
+            results: list[RawListing] = []
             items = await page.query_selector_all('[data-marker="item"]')
             for item in items:
                 parsed = await _extract_card(item, search)
                 if parsed:
                     results.append(parsed)
+            return results
         finally:
-            await context.close()
-            await browser.close()
+            await page.close()
 
-    return results
+    async def fetch_detail(self, url: str) -> str:
+        """Догружает полное описание объявления (для лучшего анализа). Best-effort."""
+        page = await self._open_page(
+            url, settle_ms=2000,
+            captcha_hint="Avito показал проверку на карточке объявления",
+        )
+        try:
+            desc_el = await page.query_selector('[data-marker="item-view/item-description"]')
+            return (await desc_el.inner_text()).strip() if desc_el else ""
+        finally:
+            await page.close()
 
 
 async def _extract_card(item, search: SavedSearch) -> RawListing | None:
@@ -119,35 +180,3 @@ async def _extract_card(item, search: SavedSearch) -> RawListing | None:
     except Exception as exc:  # noqa: BLE001
         logger.debug("Не удалось разобрать карточку: %s", exc)
         return None
-
-
-async def fetch_detail(url: str) -> str:
-    """Догружает полное описание объявления (для лучшего анализа). Best-effort."""
-    try:
-        from playwright.async_api import async_playwright  # noqa: WPS433
-    except ImportError:  # pragma: no cover
-        return ""
-
-    async with async_playwright() as pw:
-        browser = await pw.chromium.launch(headless=settings.watch_headless)
-        context = await browser.new_context(user_agent=_USER_AGENT, locale="ru-RU")
-        page = await context.new_page()
-        try:
-            await page.goto(url, wait_until="domcontentloaded", timeout=45000)
-            await page.wait_for_timeout(2000)
-            body_text = (await page.inner_text("body")).lower()
-            if any(m in body_text for m in _BLOCK_MARKERS):
-                raise CaptchaError("Avito показал проверку на карточке объявления")
-            desc_el = await page.query_selector('[data-marker="item-view/item-description"]')
-            return (await desc_el.inner_text()).strip() if desc_el else ""
-        finally:
-            await context.close()
-            await browser.close()
-
-
-def _abs_url(href: str | None) -> str | None:
-    if not href:
-        return None
-    if href.startswith("http"):
-        return href
-    return f"https://www.avito.ru{href}"

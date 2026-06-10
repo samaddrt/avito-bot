@@ -1,11 +1,13 @@
-aiogram==3.13.1
-fastapi==0.115.0
-uvicorn[standard]==0.30.6
-SQLAlchemy==2.0.35
-aiosqlite==0.20.0
-pydantic==2.9.2
-pydantic-settings==2.5.2
+# Зависимости с нижними границами (точные версии — на твоей машине через pip freeze).
+# Жёсткие пины убраны: старые версии (напр. pydantic 2.9) не собираются на Python 3.13+.
+aiogram>=3.13
+fastapi>=0.115
+uvicorn[standard]>=0.30
+SQLAlchemy>=2.0.35
+aiosqlite>=0.20
+pydantic>=2.9
+pydantic-settings>=2.5
 google-genai>=1.0.0
-playwright==1.47.0
-python-dotenv==1.0.1
-httpx==0.27.2
+playwright>=1.47
+python-dotenv>=1.0
+httpx>=0.27

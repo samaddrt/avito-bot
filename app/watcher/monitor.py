@@ -38,6 +38,7 @@ class Monitor:
         self.on_deal = on_deal
         self.on_alert = on_alert
         self._stop = asyncio.Event()
+        self._detail_budget = 0  # выставляется в начале каждого прохода
 
     def stop(self) -> None:
         self._stop.set()
@@ -72,21 +73,27 @@ class Monitor:
             logger.debug("Нет активных поисков (включи их в data/searches.json)")
             return
 
-        for search in active:
-            if self._stop.is_set():
-                return
-            try:
-                raw_items = await avito.fetch_search(search, settings.watch_max_detail_per_run)
-            except CaptchaError as exc:
-                await self._handle_captcha(str(exc))
-                return
-            await self._process_items(search, raw_items)
-            # Небольшая человеческая пауза между поисками.
-            await self._sleep_or_stop(random.randint(20, 45))
+        # Один браузер и один бюджет догрузки описаний на весь проход.
+        self._detail_budget = settings.watch_max_detail_per_run
+        async with avito.AvitoBrowser() as browser:
+            for search in active:
+                if self._stop.is_set():
+                    return
+                try:
+                    raw_items = await browser.fetch_search(search)
+                except CaptchaError as exc:
+                    await self._handle_captcha(str(exc))
+                    return
+                if not await self._process_items(browser, search, raw_items):
+                    return
+                # Небольшая человеческая пауза между поисками.
+                await self._sleep_or_stop(random.randint(20, 45))
 
         await self._record_success(len(active))
 
-    async def _process_items(self, search, raw_items: list[RawListing]) -> None:
+    async def _process_items(self, browser: "avito.AvitoBrowser", search,
+                             raw_items: list[RawListing]) -> bool:
+        """Анализирует новые объявления. False — проход надо прервать (капча/стоп)."""
         new_items: list[RawListing] = []
         async with get_session() as session:
             for item in raw_items:
@@ -94,25 +101,25 @@ class Monitor:
                     new_items.append(item)
 
         if not new_items:
-            return
+            return True
         logger.info("Поиск '%s': %s новых объявлений", search.name, len(new_items))
 
-        detail_budget = settings.watch_max_detail_per_run
         for item in new_items:
             if self._stop.is_set():
-                return
+                return False
             description = ""
-            if detail_budget > 0 and item.url:
+            if self._detail_budget > 0 and item.url:
                 try:
-                    description = await avito.fetch_detail(item.url)
-                    detail_budget -= 1
+                    description = await browser.fetch_detail(item.url)
+                    self._detail_budget -= 1
                 except CaptchaError as exc:
                     await self._handle_captcha(str(exc))
-                    return
+                    return False
                 except Exception as exc:  # noqa: BLE001
                     logger.debug("Не удалось догрузить описание: %s", exc)
             item.description = description
             await self._analyze_and_store(item)
+        return True
 
     async def _analyze_and_store(self, item: RawListing) -> None:
         try:

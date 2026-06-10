@@ -2,13 +2,20 @@
 from __future__ import annotations
 
 import asyncio
+import contextlib
 import logging
 import signal
+import sys
 
 import uvicorn
 
 from app.config import settings
 from app.db import init_db
+
+# Windows-консоль по умолчанию не UTF-8 — без этого русские логи превращаются в кракозябры.
+for stream in (sys.stdout, sys.stderr):
+    with contextlib.suppress(Exception):
+        stream.reconfigure(encoding="utf-8")
 
 logging.basicConfig(
     level=logging.INFO,

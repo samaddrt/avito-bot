@@ -122,7 +122,7 @@ def lookup(category: str | None, model_name: str | None) -> dict | None:
         return None
 
     query_tokens = _normalize(model_name)
-    candidates: list[tuple[int, str, dict]] = []
+    candidates: list[tuple[int, float, str, dict]] = []
 
     search_space: dict = {}
     if category and category in data:
@@ -133,15 +133,19 @@ def lookup(category: str | None, model_name: str | None) -> dict | None:
                 search_space.update(models)
 
     for name, prices in search_space.items():
-        overlap = len(query_tokens & _normalize(name))
+        name_tokens = _normalize(name)
+        overlap = len(query_tokens & name_tokens)
         if overlap:
-            candidates.append((overlap, name, prices))
+            # При равном пересечении выигрывает более «точное» имя:
+            # 'iPhone 14' матчится на 'iPhone 14', а не на 'iPhone 14 Pro Max'.
+            precision = overlap / len(name_tokens)
+            candidates.append((overlap, precision, name, prices))
 
     if not candidates:
         return None
 
-    candidates.sort(key=lambda x: x[0], reverse=True)
-    _, name, prices = candidates[0]
+    candidates.sort(key=lambda x: (x[0], x[1]), reverse=True)
+    _, _, name, prices = candidates[0]
     return {
         "name": name,
         "market_price": prices["market_price"],
