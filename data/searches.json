@@ -1,0 +1,29 @@
+{
+  "_comment": "Сохранённые поиски Avito. Настрой фильтры на сайте (город, цена, состояние), отсортируй 'по дате', скопируй URL из адресной строки в поле url. enabled=false временно отключает поиск. min_price/max_price — дополнительный локальный фильтр (необязательно).",
+  "searches": [
+    {
+      "name": "PS5 — Москва",
+      "url": "https://www.avito.ru/moskva/igry_pristavki_i_programmy/igrovye_pristavki-ASgBCgICAUTOAQDcjA0?cd=1&s=104&q=playstation+5",
+      "enabled": false,
+      "category_hint": "ps5",
+      "min_price": 20000,
+      "max_price": 55000
+    },
+    {
+      "name": "MacBook Air M1/M2 — Москва",
+      "url": "https://www.avito.ru/moskva/noutbuki?cd=1&s=104&q=macbook+air+m2",
+      "enabled": false,
+      "category_hint": "macbook_air",
+      "min_price": 35000,
+      "max_price": 95000
+    },
+    {
+      "name": "iPhone 13/14/15 — Москва",
+      "url": "https://www.avito.ru/moskva/telefony/mobilnye_telefony/apple-ASgBAgICAkSSA8oQ8AeQUg?cd=1&s=104&q=iphone+14",
+      "enabled": false,
+      "category_hint": "iphone",
+      "min_price": 25000,
+      "max_price": 100000
+    }
+  ]
+}

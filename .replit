@@ -1,0 +1,19 @@
+run = "python run.py"
+entrypoint = "run.py"
+modules = ["python-3.11"]
+
+[nix]
+channel = "stable-24_05"
+
+[env]
+PYTHONUNBUFFERED = "1"
+# Playwright ставит браузеры в проект (важно на Replit)
+PLAYWRIGHT_BROWSERS_PATH = "0"
+
+[[ports]]
+localPort = 8000
+externalPort = 80
+
+[deployment]
+run = ["python", "run.py"]
+deploymentTarget = "cloudrun"

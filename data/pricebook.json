@@ -1,0 +1,118 @@
+{
+  "_comment": "Каталог товаров и опорных цен (РФ, б/у в хорошем состоянии). Редактируй вручную или из бота/дашборда (/addproduct). market_price — реальная цена продажи, quick_sale_price — быстрая продажа за 1-3 дня, liquidity — high/medium/low (как быстро уходит).",
+  "currency": "RUB",
+  "updated": "2026-06-10",
+  "items": {
+    "ps5": {
+      "PS5 Fat Disc": {
+        "market_price": 42000,
+        "quick_sale_price": 38000,
+        "liquidity": "high"
+      },
+      "PS5 Fat Digital": {
+        "market_price": 36000,
+        "quick_sale_price": 32000,
+        "liquidity": "high"
+      },
+      "PS5 Slim Disc": {
+        "market_price": 47000,
+        "quick_sale_price": 43000,
+        "liquidity": "high"
+      },
+      "PS5 Slim Digital": {
+        "market_price": 40000,
+        "quick_sale_price": 36000,
+        "liquidity": "high"
+      },
+      "PS5 Pro": {
+        "market_price": 75000,
+        "quick_sale_price": 69000,
+        "liquidity": "medium"
+      }
+    },
+    "macbook_air": {
+      "MacBook Air M1 8/256": {
+        "market_price": 52000,
+        "quick_sale_price": 47000,
+        "liquidity": "high"
+      },
+      "MacBook Air M1 8/512": {
+        "market_price": 58000,
+        "quick_sale_price": 53000,
+        "liquidity": "medium"
+      },
+      "MacBook Air M2 8/256": {
+        "market_price": 72000,
+        "quick_sale_price": 66000,
+        "liquidity": "high"
+      },
+      "MacBook Air M2 8/512": {
+        "market_price": 82000,
+        "quick_sale_price": 75000,
+        "liquidity": "medium"
+      },
+      "MacBook Air M2 16/512": {
+        "market_price": 92000,
+        "quick_sale_price": 85000,
+        "liquidity": "low"
+      },
+      "MacBook Air M3 8/256": {
+        "market_price": 88000,
+        "quick_sale_price": 81000,
+        "liquidity": "medium"
+      }
+    },
+    "iphone": {
+      "iPhone 13 128GB": {
+        "market_price": 38000,
+        "quick_sale_price": 34000,
+        "liquidity": "high"
+      },
+      "iPhone 13 256GB": {
+        "market_price": 43000,
+        "quick_sale_price": 39000,
+        "liquidity": "medium"
+      },
+      "iPhone 14 128GB": {
+        "market_price": 47000,
+        "quick_sale_price": 43000,
+        "liquidity": "high"
+      },
+      "iPhone 14 256GB": {
+        "market_price": 53000,
+        "quick_sale_price": 48000,
+        "liquidity": "medium"
+      },
+      "iPhone 14 Pro 128GB": {
+        "market_price": 62000,
+        "quick_sale_price": 56000,
+        "liquidity": "high"
+      },
+      "iPhone 14 Pro 256GB": {
+        "market_price": 70000,
+        "quick_sale_price": 64000,
+        "liquidity": "medium"
+      },
+      "iPhone 15 128GB": {
+        "market_price": 58000,
+        "quick_sale_price": 53000,
+        "liquidity": "high"
+      },
+      "iPhone 15 256GB": {
+        "market_price": 65000,
+        "quick_sale_price": 60000,
+        "liquidity": "medium"
+      },
+      "iPhone 15 Pro 256GB": {
+        "market_price": 82000,
+        "quick_sale_price": 75000,
+        "liquidity": "high"
+      },
+      "iPhone 15 Pro Max 256GB": {
+        "market_price": 95000,
+        "quick_sale_price": 88000,
+        "liquidity": "medium"
+      }
+    }
+  }
+}

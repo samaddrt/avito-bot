@@ -1,0 +1,103 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <title>SoloMoney Avito OS</title>
+  <script src="https://telegram.org/js/telegram-web-app.js"></script>
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <header class="topbar">
+    <div class="brand">
+      <span class="logo">◆</span>
+      <span>SoloMoney <em>Avito OS</em></span>
+    </div>
+    <button id="refreshBtn" class="ghost" title="Обновить">⟳</button>
+  </header>
+
+  <main>
+    <section class="stats" id="stats"></section>
+
+    <section class="card watcher" id="watcherCard">
+      <div class="watcher-head">
+        <h3>Мониторинг</h3>
+        <div class="watcher-actions">
+          <button id="pauseBtn" class="ghost">⏸ Пауза</button>
+          <button id="resumeBtn" class="ghost">▶️ Старт</button>
+        </div>
+      </div>
+      <pre id="watcherStatus" class="mono">…</pre>
+    </section>
+
+    <section class="card">
+      <h3>💡 Что выгодно брать на бюджет</h3>
+      <div class="search-add">
+        <input id="budgetInput" type="number" placeholder="Бюджет, ₽ (напр. 50000)" />
+        <button class="ghost" onclick="findOpportunities()">Подобрать</button>
+      </div>
+      <div id="opportunities"></div>
+    </section>
+
+    <section class="card">
+      <h3>Быстрый анализ объявления</h3>
+      <textarea id="analyzeInput" placeholder="Вставь текст объявления: заголовок, цена, описание…"></textarea>
+      <button id="analyzeBtn" class="primary">Анализировать</button>
+    </section>
+
+    <section class="filters" id="filters">
+      <button class="chip active" data-status="">Все</button>
+      <button class="chip" data-status="new">Новые</button>
+      <button class="chip" data-status="contacted,negotiating">В работе</button>
+      <button class="chip" data-status="bought,listed">Куплено</button>
+      <button class="chip" data-status="sold">Продано</button>
+      <button class="chip" data-status="watching">Наблюдаю</button>
+    </section>
+
+    <section id="dealsList" class="deals"></section>
+
+    <section class="card">
+      <h3>Каталог товаров</h3>
+      <div id="productList"></div>
+      <div class="product-add">
+        <input id="pCategory" type="text" placeholder="категория (напр. airpods)" />
+        <input id="pModel" type="text" placeholder="модель (напр. AirPods Pro 2)" />
+        <div class="search-add">
+          <input id="pMarket" type="number" placeholder="рынок ₽" />
+          <input id="pQuick" type="number" placeholder="быстрая ₽" />
+          <select id="pLiq">
+            <option value="high">ходовой</option>
+            <option value="medium" selected>средний</option>
+            <option value="low">медленный</option>
+          </select>
+        </div>
+        <button class="ghost" onclick="addProduct()">＋ В каталог</button>
+      </div>
+    </section>
+
+    <section class="card">
+      <h3>Поиски мониторинга</h3>
+      <div id="searchList"></div>
+      <div class="search-add">
+        <input id="searchUrl" type="text" placeholder="URL поиска Avito (сортировка по дате)…" />
+        <button class="ghost" onclick="addSearch()">＋ Добавить</button>
+      </div>
+    </section>
+
+    <section class="card tools">
+      <a id="exportBtn" class="ghost">⬇ Экспорт CSV</a>
+      <button id="backupBtn" class="ghost">💾 Бэкап БД</button>
+      <button class="ghost" onclick="runCalibration()">📐 Калибровать цены</button>
+    </section>
+  </main>
+
+  <div id="modal" class="modal hidden">
+    <div class="modal-body" id="modalBody"></div>
+    <button id="modalClose" class="modal-close">✕</button>
+  </div>
+
+  <div id="toast" class="toast hidden"></div>
+
+  <script src="app.js"></script>
+</body>
+</html>
