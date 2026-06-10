@@ -1,6 +1,7 @@
 """Конфигурация приложения. Все секреты и настройки берутся из .env (никогда из кода)."""
 from __future__ import annotations
 
+import os
 from pathlib import Path
 
 from pydantic import Field
@@ -32,7 +33,8 @@ class Settings(BaseSettings):
     # Web / Mini App
     web_host: str = Field(default="0.0.0.0", alias="WEB_HOST")
     web_port: int = Field(default=8000, alias="WEB_PORT")
-    webapp_url: str = Field(default="", alias="WEBAPP_URL")
+    # Если WEBAPP_URL не задан вручную — подхватываем публичный HTTPS-домен Replit (см. webapp_url).
+    webapp_url_env: str = Field(default="", alias="WEBAPP_URL")
 
     # Watcher
     watcher_enabled: bool = Field(default=True, alias="WATCHER_ENABLED")
@@ -77,6 +79,26 @@ class Settings(BaseSettings):
         d = DATA_DIR / "backups"
         d.mkdir(exist_ok=True)
         return d
+
+    @property
+    def webapp_url(self) -> str:
+        """Публичный HTTPS-URL дашборда для Telegram Mini App.
+
+        Приоритет: явный WEBAPP_URL → авто-домен Replit (dev или деплой). Telegram
+        требует HTTPS-ссылку, поэтому на Replit определяем её сами, чтобы кнопка
+        Mini App появлялась без ручной настройки.
+        """
+        if self.webapp_url_env:
+            return self.webapp_url_env.rstrip("/")
+        dev = os.environ.get("REPLIT_DEV_DOMAIN")
+        if dev:
+            return f"https://{dev}"
+        domains = os.environ.get("REPLIT_DOMAINS")
+        if domains:
+            first = domains.split(",")[0].strip()
+            if first:
+                return f"https://{first}"
+        return ""
 
     @property
     def gemini_enabled(self) -> bool:

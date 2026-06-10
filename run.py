@@ -36,6 +36,36 @@ async def _run_web() -> None:
     await server.serve()
 
 
+async def _ensure_playwright_browser() -> None:
+    """Best-effort: гарантирует наличие Chromium для Playwright.
+
+    На Replit (импорт из zip) системный браузер из replit.nix может быть недоступен,
+    а без браузера мониторинг тихо падает. Если задан системный Chromium
+    (PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH) — ничего не делаем. Иначе один раз ставим
+    браузер Playwright. Не блокирует старт бота/веба и не валит процесс при ошибке.
+    """
+    import os
+
+    if os.environ.get("PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH"):
+        return  # используется системный Chromium (Nix) — установка не нужна
+    try:
+        proc = await asyncio.create_subprocess_exec(
+            sys.executable, "-m", "playwright", "install", "chromium",
+            stdout=asyncio.subprocess.PIPE, stderr=asyncio.subprocess.STDOUT,
+        )
+        logger.info("Проверяю/ставлю Chromium для Playwright (это разово)…")
+        await proc.communicate()
+        if proc.returncode == 0:
+            logger.info("Chromium для Playwright готов")
+        else:
+            logger.warning(
+                "playwright install завершился с кодом %s — мониторинг сообщит, "
+                "если браузер не запустится", proc.returncode,
+            )
+    except Exception as exc:  # noqa: BLE001
+        logger.warning("Не удалось установить браузер Playwright автоматически: %s", exc)
+
+
 async def main() -> None:
     await init_db()
     logger.info("База данных готова: %s", settings.db_path)
@@ -55,6 +85,10 @@ async def main() -> None:
         from app.watcher.monitor import Monitor
 
         mon = Monitor(on_deal=push_deal, on_alert=send_alert)
+        # Обеспечиваем браузер для мониторинга в фоне (не задерживает старт бота).
+        if settings.watcher_enabled:
+            tasks.append(asyncio.create_task(
+                _ensure_playwright_browser(), name="playwright-setup"))
         tasks.append(asyncio.create_task(run_bot(), name="bot"))
         tasks.append(asyncio.create_task(mon.run(), name="watcher"))
         tasks.append(asyncio.create_task(

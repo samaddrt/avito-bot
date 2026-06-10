@@ -39,6 +39,7 @@ class Monitor:
         self.on_alert = on_alert
         self._stop = asyncio.Event()
         self._detail_budget = 0  # выставляется в начале каждого прохода
+        self._last_error_alert: datetime | None = None  # троттлинг алертов об ошибках
 
     def stop(self) -> None:
         self._stop.set()
@@ -48,15 +49,60 @@ class Monitor:
             logger.info("Watcher выключен (WATCHER_ENABLED=0)")
             return
         logger.info("Watcher запущен")
+        await self._announce_start()
         while not self._stop.is_set():
             try:
                 await self._tick()
             except Exception as exc:  # noqa: BLE001
                 logger.exception("Ошибка в цикле мониторинга: %s", exc)
                 await self._record_error(str(exc))
+                await self._alert_error(exc)
             # Пауза до следующего прохода (с джиттером).
             delay = random.randint(settings.watch_interval_min, settings.watch_interval_max)
             await self._sleep_or_stop(delay)
+
+    async def _announce_start(self) -> None:
+        """Шлёт владельцу короткое резюме при старте, чтобы было видно состояние мониторинга."""
+        if not self.on_alert:
+            return
+        active = searches.enabled_searches()
+        if active:
+            msg = (
+                f"▶️ Мониторинг запущен. Активных поисков: {len(active)}.\n"
+                "Пришлю варианты с вердиктом «брать» или «торговаться»."
+            )
+        else:
+            msg = (
+                "▶️ Мониторинг запущен, но активных поисков нет — поэтому он молчит.\n"
+                "Добавь поиск: /addsearch URL_поиска_Avito, либо включи готовые в /searches."
+            )
+        try:
+            await self.on_alert(msg)
+        except Exception as exc:  # noqa: BLE001
+            logger.warning("Не удалось отправить стартовое уведомление: %s", exc)
+
+    async def _alert_error(self, exc: Exception) -> None:
+        """Уведомляет владельца о сбое мониторинга (не чаще раза в 30 мин), без спама."""
+        if not self.on_alert:
+            return
+        now = datetime.now(timezone.utc)
+        if self._last_error_alert and (now - self._last_error_alert) < timedelta(minutes=30):
+            return
+        self._last_error_alert = now
+        text = str(exc)
+        if "executable" in text.lower() or "playwright install" in text.lower():
+            hint = (
+                "⚠️ Мониторинг не может запустить браузер: не установлен Chromium для Playwright.\n"
+                "Открой Shell в Replit и выполни один раз:\n"
+                "<code>playwright install chromium</code>\n"
+                "затем перезапусти (Run)."
+            )
+        else:
+            hint = f"⚠️ Сбой мониторинга: {text[:200]}\nПопробую снова в следующем проходе."
+        try:
+            await self.on_alert(hint)
+        except Exception as e:  # noqa: BLE001
+            logger.warning("Не удалось отправить алерт об ошибке: %s", e)
 
     async def _tick(self) -> None:
         # Проверяем паузу/бэкофф.

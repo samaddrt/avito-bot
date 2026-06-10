@@ -1,7 +1,7 @@
 """Inline-клавиатуры бота."""
 from __future__ import annotations
 
-from aiogram.types import InlineKeyboardButton, InlineKeyboardMarkup
+from aiogram.types import InlineKeyboardButton, InlineKeyboardMarkup, WebAppInfo
 from aiogram.utils.keyboard import InlineKeyboardBuilder
 
 from app.config import settings
@@ -37,13 +37,14 @@ def deal_status_flow(deal_id: int) -> InlineKeyboardMarkup:
 
 
 def open_app() -> InlineKeyboardMarkup | None:
-    if not settings.webapp_url:
+    url = settings.webapp_url
+    if not url or not url.startswith("https://"):
         return None
     return InlineKeyboardMarkup(
         inline_keyboard=[[
             InlineKeyboardButton(
                 text="📊 Открыть дашборд",
-                web_app={"url": settings.webapp_url},
+                web_app=WebAppInfo(url=url),
             )
         ]]
     )

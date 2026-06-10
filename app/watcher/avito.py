@@ -11,6 +11,7 @@ async-контекст и ходит по всем поискам/карточк
 from __future__ import annotations
 
 import logging
+import os
 import re
 
 from app.config import settings
@@ -71,7 +72,11 @@ class AvitoBrowser:
             ) from exc
 
         self._pw = await async_playwright().start()
-        self._browser = await self._pw.chromium.launch(headless=settings.watch_headless)
+        # На Replit/Nix используем системный Chromium (см. replit.nix), локально — браузер Playwright.
+        exe = os.environ.get("PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH") or None
+        self._browser = await self._pw.chromium.launch(
+            headless=settings.watch_headless, executable_path=exe,
+        )
         self._context = await self._browser.new_context(
             user_agent=_USER_AGENT,
             locale="ru-RU",
