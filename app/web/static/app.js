@@ -47,7 +47,11 @@ async function api(path, opts = {}) {
   const headers = { "Content-Type": "application/json", ...(opts.headers || {}) };
   if (INIT_DATA) headers["X-Init-Data"] = INIT_DATA;
   const res = await fetch(path, { ...opts, headers });
-  if (!res.ok) throw new Error((await res.json().catch(() => ({}))).detail || res.statusText);
+  if (!res.ok) {
+    const err = new Error((await res.json().catch(() => ({}))).detail || res.statusText);
+    err.status = res.status;  // чтобы вызывающий мог различить 403 (доступ) и 5xx/сеть
+    throw err;
+  }
   return res.headers.get("content-type")?.includes("json") ? res.json() : res;
 }
 
@@ -171,11 +175,19 @@ window.runCalibration = async () => {
 };
 
 async function loadWatcher() {
+  const el = document.getElementById("watcherStatus");
   try {
     const w = await api("/api/watcher");
-    document.getElementById("watcherStatus").textContent = w.status;
+    el.textContent = w.status;
   } catch (e) {
-    document.getElementById("watcherStatus").textContent = "недоступно";
+    // Объясняем причину, а не просто «недоступно».
+    if (e.status === 403) {
+      el.textContent = "Нет доступа. Проверь, что в Replit заданы секреты бота "
+        + "(BOT_TOKEN, OWNER_TELEGRAM_ID), и что Mini App открыт у владельца.";
+    } else {
+      el.textContent = "Сервер не отвечает — приложение на Replit не запущено. "
+        + "Нажми Run, либо задеплой (Reserved VM) для работы 24/7.";
+    }
   }
 }
 
