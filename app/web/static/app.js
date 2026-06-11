@@ -5,6 +5,29 @@ if (tg) { tg.ready(); tg.expand(); }
 const INIT_DATA = tg?.initData || "";
 let currentFilter = "";
 
+// ---------- Тема (светлая/тёмная) ----------
+function applyTheme(theme) {
+  document.documentElement.setAttribute("data-theme", theme);
+  const btn = document.getElementById("themeBtn");
+  if (btn) btn.textContent = theme === "dark" ? "☀️" : "🌙";  // показываем, на что переключим
+}
+function initTheme() {
+  // Приоритет: явный выбор пользователя → тема Telegram → системная → светлая.
+  let theme = localStorage.getItem("theme");
+  if (!theme) {
+    if (tg?.colorScheme) theme = tg.colorScheme;
+    else if (window.matchMedia?.("(prefers-color-scheme: dark)").matches) theme = "dark";
+    else theme = "light";
+  }
+  applyTheme(theme);
+}
+function toggleTheme() {
+  const next = document.documentElement.getAttribute("data-theme") === "dark" ? "light" : "dark";
+  localStorage.setItem("theme", next);
+  applyTheme(next);
+}
+initTheme();
+
 const VERDICT_RU = {
   BUY_NOW: "БРАТЬ", NEGOTIATE: "ТОРГ", WATCH: "НАБЛЮДАТЬ",
   SKIP: "ПРОПУСК", HIGH_RISK: "РИСК",
@@ -321,6 +344,7 @@ document.getElementById("analyzeBtn").addEventListener("click", async () => {
 });
 
 // ---------- Controls ----------
+document.getElementById("themeBtn").addEventListener("click", toggleTheme);
 document.getElementById("refreshBtn").addEventListener("click", () => { loadStats(); loadWatcher(); loadDeals(); loadSearches(); loadProducts(); });
 document.getElementById("modalClose").addEventListener("click", closeModal);
 document.getElementById("modal").addEventListener("click", (e) => { if (e.target.id === "modal") closeModal(); });
